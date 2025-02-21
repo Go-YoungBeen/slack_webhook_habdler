@@ -5,23 +5,42 @@ import java.net.http.HttpResponse;
 
 public class Webhook {
     public static void main(String[] args) {
-        String prompt = System.getenv("LLM_PROMPT");
-        String llmResult = useLLM(prompt);
-        System.out.println("llmResult = " + llmResult);
-        String template = System.getenv("LLM2_IMAGE_TEMPLATE");
-        String imagePrompt = template.formatted(llmResult);
-        System.out.println("imagePrompt = " + imagePrompt);
-        String llmImageResult = useLLMForImage(imagePrompt);
-        System.out.println("llmImageResult = " + llmImageResult);
-        String title = System.getenv("SLACK_WEBHOOK_TITLE");
-        sendSlackMessage(title, llmResult, llmImageResult);
+        try {
+            String prompt = System.getenv("LLM_PROMPT");
+            String llmResult = useLLM(prompt);
+            System.out.println("llmResult = " + llmResult);
+            
+            String template = System.getenv("LLM2_IMAGE_TEMPLATE");
+            // Escape any special characters in the LLM result
+            String escapedResult = llmResult.replace("\"", "\\\"")
+                                         .replace("\n", "\\n")
+                                         .replace("\r", "\\r");
+            String imagePrompt = String.format("%s: %s", template, escapedResult);
+            System.out.println("imagePrompt = " + imagePrompt);
+            
+            String llmImageResult = useLLMForImage(imagePrompt);
+            System.out.println("llmImageResult = " + llmImageResult);
+            
+            String title = System.getenv("SLACK_WEBHOOK_TITLE");
+            sendSlackMessage(title, llmResult, llmImageResult);
+        } catch (Exception e) {
+            System.err.println("Error in main: " + e.getMessage());
+            e.printStackTrace();
+            System.exit(1);
+        }
     }
 
     public static String useLLMForImage(String prompt) {
         String apiUrl = System.getenv("LLM2_API_URL");
         String apiKey = System.getenv("LLM2_API_KEY");
         String model = System.getenv("LLM2_MODEL");
-        String payload = """
+        
+        // Properly escape the prompt for JSON
+        String escapedPrompt = prompt.replace("\"", "\\\"")
+                                   .replace("\n", "\\n")
+                                   .replace("\r", "\\r");
+        
+        String payload = String.format("""
                 {
                   "prompt": "%s",
                   "model": "%s",
@@ -30,7 +49,8 @@ public class Webhook {
                   "steps": 4,
                   "n": 1
                 }
-                """.formatted(prompt, model);
+                """, escapedPrompt, model);
+
         HttpClient client = HttpClient.newHttpClient();
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(apiUrl))
@@ -38,23 +58,38 @@ public class Webhook {
                 .header("Authorization", "Bearer " + apiKey)
                 .POST(HttpRequest.BodyPublishers.ofString(payload))
                 .build();
-        String result = null;
+
         try {
             HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
-            System.out.println("response.statusCode() = " + response.statusCode());
-            System.out.println("response.body() = " + response.body());
-            result = response.body().split("url\": \"")[1].split("\",")[0];
+            System.out.println("Response status code: " + response.statusCode());
+            
+            if (response.statusCode() != 200) {
+                throw new RuntimeException("API request failed with status " + response.statusCode() + ": " + response.body());
+            }
+            
+            // More robust response parsing
+            String body = response.body();
+            if (!body.contains("\"url\": \"")) {
+                throw new RuntimeException("Unexpected response format: " + body);
+            }
+            
+            return body.split("\"url\": \"")[1].split("\"")[0];
         } catch (Exception e) {
-            throw new RuntimeException(e);
+            throw new RuntimeException("Error in useLLMForImage: " + e.getMessage(), e);
         }
-        return result;
     }
 
     public static String useLLM(String prompt) {
         String apiUrl = System.getenv("LLM_API_URL");
         String apiKey = System.getenv("LLM_API_KEY");
         String model = System.getenv("LLM_MODEL");
-        String payload = """
+        
+        // Properly escape the prompt for JSON
+        String escapedPrompt = prompt.replace("\"", "\\\"")
+                                   .replace("\n", "\\n")
+                                   .replace("\r", "\\r");
+        
+        String payload = String.format("""
                 {
                   "messages": [
                     {
@@ -64,7 +99,8 @@ public class Webhook {
                   ],
                   "model": "%s"
                 }
-                """.formatted(prompt, model);
+                """, escapedPrompt, model);
+
         HttpClient client = HttpClient.newHttpClient();
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(apiUrl))
@@ -72,39 +108,65 @@ public class Webhook {
                 .header("Authorization", "Bearer " + apiKey)
                 .POST(HttpRequest.BodyPublishers.ofString(payload))
                 .build();
-        String result = null;
+
         try {
             HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
-            System.out.println("response.statusCode() = " + response.statusCode());
-            System.out.println("response.body() = " + response.body());
-            result = response.body().split("\"content\":\"")[1].split("\"},\"logprobs\"")[0];
+            System.out.println("Response status code: " + response.statusCode());
+            
+            if (response.statusCode() != 200) {
+                throw new RuntimeException("API request failed with status " + response.statusCode() + ": " + response.body());
+            }
+            
+            // More robust response parsing
+            String body = response.body();
+            if (!body.contains("\"content\":\"")) {
+                throw new RuntimeException("Unexpected response format: " + body);
+            }
+            
+            return body.split("\"content\":\"")[1].split("\"")[0];
         } catch (Exception e) {
-            throw new RuntimeException(e);
+            throw new RuntimeException("Error in useLLM: " + e.getMessage(), e);
         }
-        return result;
     }
 
     public static void sendSlackMessage(String title, String text, String imageUrl) {
         String slackUrl = System.getenv("SLACK_WEBHOOK_URL");
-        String payload = """
-                    {"attachments": [{
+        
+        // Escape special characters for JSON
+        String escapedTitle = title.replace("\"", "\\\"")
+                                 .replace("\n", "\\n")
+                                 .replace("\r", "\\r");
+        String escapedText = text.replace("\"", "\\\"")
+                               .replace("\n", "\\n")
+                               .replace("\r", "\\r");
+        String escapedImageUrl = imageUrl.replace("\"", "\\\"");
+        
+        String payload = String.format("""
+                {
+                    "attachments": [{
                         "title": "%s",
                         "text": "%s",
                         "image_url": "%s"
-                    }]}
-                """.formatted(title, text, imageUrl);
+                    }]
+                }
+                """, escapedTitle, escapedText, escapedImageUrl);
+
         HttpClient client = HttpClient.newHttpClient();
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(slackUrl))
                 .header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(payload))
                 .build();
+
         try {
             HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
-            System.out.println("response.statusCode() = " + response.statusCode());
-            System.out.println("response.body() = " + response.body());
+            System.out.println("Slack response status code: " + response.statusCode());
+            
+            if (response.statusCode() != 200) {
+                throw new RuntimeException("Slack webhook failed with status " + response.statusCode() + ": " + response.body());
+            }
         } catch (Exception e) {
-            throw new RuntimeException(e);
+            throw new RuntimeException("Error in sendSlackMessage: " + e.getMessage(), e);
         }
     }
 }
