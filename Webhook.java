@@ -91,23 +91,28 @@ public class Webhook {
             .build();
 
     try {
-        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
-        System.out.println("response.statusCode() = " + response.statusCode());
-        System.out.println("response.body() = " + response.body());
-        
-        if (response.statusCode() != 200) {
-            throw new RuntimeException("API call failed: " + response.body());
-        }
+            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+            System.out.println("response.statusCode() = " + response.statusCode());
+            System.out.println("response.body() = " + response.body());
 
-        // Gemini API 응답 형식에 맞게 파싱
-        if (response.body().contains("\"text\":")) {
-            return response.body()
-                    .split("\"text\": \"")[1]
-                    .split("\"")[0];
+            if (response.statusCode() != 200) {
+                throw new RuntimeException("LLM API 호출 실패: " + response.body());
+            }
+
+            // Gemini API 응답 형식에 맞게 파싱
+            if (response.body().contains("\"text\":")) {
+                return response.body().split("\"text\": \"")[1].split("\"")[0];
+            } else if (response.body().contains("\"error\":")) { // 에러 메세지 처리
+                JsonObject jsonResponse = JsonParser.parseString(response.body()).getAsJsonObject();
+                String errorMessage = jsonResponse.getAsJsonObject("error").get("message").getAsString();
+                throw new RuntimeException("LLM API 에러: " + errorMessage);
+            } else {
+                throw new RuntimeException("LLM API 응답 파싱 실패: " + response.body());
+            }
+
+        } catch (Exception e) {
+            throw new RuntimeException("LLM API 호출 중 오류 발생", e);
         }
-        throw new RuntimeException("Failed to parse response: " + response.body());
-    } catch (Exception e) {
-        throw new RuntimeException("Error calling LLM API", e);
     }
 }
 
