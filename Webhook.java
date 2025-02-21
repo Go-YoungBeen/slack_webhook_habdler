@@ -114,7 +114,6 @@ public class Webhook {
             throw new RuntimeException("LLM API 호출 중 오류 발생", e);
         }
     }
-}
 
     //    public static void sendSlackMessage(String text) {
     public static void sendSlackMessage(String title, String text, String imageUrl) {
