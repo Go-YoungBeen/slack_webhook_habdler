@@ -25,29 +25,30 @@ public class Webhook {
     }
 
     public static String useLLMForImage(String prompt) {
-
-        String apiUrl = System.getenv("LLM2_API_URL"); // 환경변수로 관리
-        String apiKey = System.getenv("LLM2_API_KEY"); // 환경변수로 관리
-        String model = System.getenv("LLM2_MODEL"); // 환경변수로 관리
-        String payload = """
-                {
-                  "prompt": "%s",
-                  "model": "%s",
-                  "width": 1440,
-                  "height": 1440,
-                  "steps": 4,
-                  "n": 1
-                }
-                """.formatted(prompt, model); // 대부분 JSON 파싱 문제는 , 문제!
-        HttpClient client = HttpClient.newHttpClient(); // 새롭게 요청할 클라이언트 생성
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(apiUrl)) // URL을 통해서 어디로 요청을 보내는지 결정
-                .header("Content-Type", "application/json")
-                .header("Authorization", "Bearer " + apiKey)
-                .POST(HttpRequest.BodyPublishers.ofString(payload))
-                .build(); // 핵심
-        String result = null; // return을 하려면 일단은 할당이 되긴 해야함
-         try {
+    String apiUrl = System.getenv("LLM2_API_URL");
+    String apiKey = System.getenv("LLM2_API_KEY");
+    String model = System.getenv("LLM2_MODEL");
+    
+    String payload = """
+            {
+              "prompt": "%s",
+              "model": "%s",
+              "width": 1440,
+              "height": 1440,
+              "steps": 4,
+              "n": 1
+            }
+            """.formatted(prompt, model);
+            
+    HttpClient client = HttpClient.newHttpClient();
+    HttpRequest request = HttpRequest.newBuilder()
+            .uri(URI.create(apiUrl))
+            .header("Content-Type", "application/json")
+            .header("Authorization", "Bearer " + apiKey)
+            .POST(HttpRequest.BodyPublishers.ofString(payload))
+            .build();
+            
+    try {
         HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
         System.out.println("Response Status: " + response.statusCode());
         System.out.println("Full Response: " + response.body());
@@ -57,22 +58,17 @@ public class Webhook {
         }
 
         String responseBody = response.body();
-        // 다양한 응답 형식 처리
-        if (responseBody.contains("\"content\":\"")) {
-            return responseBody.split("\"content\":\"")[1].split("\"")[0];
-        } else if (responseBody.contains("\"message\":\"")) {
-            return responseBody.split("\"message\":\"")[1].split("\"")[0];
-        } else if (responseBody.contains("\"text\":\"")) {
-            return responseBody.split("\"text\":\"")[1].split("\"")[0];
+        // URL 추출을 위한 파싱
+        if (responseBody.contains("\"url\": \"")) {
+            return responseBody.split("\"url\": \"")[1].split("\"")[0];
         }
         
         throw new RuntimeException("Unexpected response format: " + responseBody);
     } catch (Exception e) {
         System.err.println("Error details: " + e.getMessage());
-        throw new RuntimeException("Error calling LLM API: " + e.getMessage(), e);
+        throw new RuntimeException("Error calling Image API: " + e.getMessage(), e);
     }
-        return result; // 앞뒤를 자르고 우리에게 필요한 내용만 리턴
-    }
+}
 
     public static String useLLM(String prompt) {
     String apiUrl = System.getenv("LLM_API_URL");
