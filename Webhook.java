@@ -25,52 +25,41 @@ public class Webhook {
     }
 
    public static String useLLMForImage(String prompt) {
-    String apiUrl = System.getenv("LLM2_API_URL");
-    String apiKey = System.getenv("LLM2_API_KEY");
-    String model = System.getenv("LLM2_MODEL");
-    
-    String payload = """
-            {
-              "prompt": "%s",
-              "model": "%s",
-              "width": 1024,
-              "height": 1024,
-              "steps": 20,
-              "n": 1
-            }
-            """.formatted(prompt, model);
-            
-    HttpClient client = HttpClient.newHttpClient();
-    HttpRequest request = HttpRequest.newBuilder()
-            .uri(URI.create(apiUrl))
-            .header("Content-Type", "application/json")
-            .header("Authorization", "Bearer " + apiKey)
-            .POST(HttpRequest.BodyPublishers.ofString(payload))
-            .build();
-            
-    try {
-        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
-        System.out.println("Response Status: " + response.statusCode());
-        System.out.println("Full Response: " + response.body());
-        
-        if (response.statusCode() != 200) {
-            System.err.println("Image API Error: " + response.body());
-            return null; // 이미지 생성 실패시 null 반환
-        }
 
-        String responseBody = response.body();
-        // url 추출을 위한 파싱
-        if (responseBody.contains("\"url\": \"")) {
-            return responseBody.split("\"url\": \"")[1].split("\"")[0];
+        // 이름 바꾸기 -> 해당 메서드 내부? 클래스를 기준하다면 그 내부만 바꿔줌
+        String apiUrl = System.getenv("LLM2_API_URL"); // 환경변수로 관리
+        String apiKey = System.getenv("LLM2_API_KEY"); // 환경변수로 관리
+        String model = System.getenv("LLM2_MODEL"); // 환경변수로 관리
+//        String payload = "{\"text\": \"" + prompt + "\"}";
+        String payload = """
+                {
+                  "prompt": "%s",
+                  "model": "%s",
+                  "width": 1440,
+                  "height": 1440,
+                  "steps": 4,
+                  "n": 1
+                }
+                """.formatted(prompt, model);
+        HttpClient client = HttpClient.newHttpClient(); // 새롭게 요청할 클라이언트 생성
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(apiUrl)) // URL을 통해서 어디로 요청을 보내는지 결정
+                .header("Content-Type", "application/json")
+                .header("Authorization", "Bearer " + apiKey)
+                .POST(HttpRequest.BodyPublishers.ofString(payload))
+                .build(); // 핵심
+        String result = null;
+        try { // try
+            HttpResponse<String> response = client.send(request,
+                    HttpResponse.BodyHandlers.ofString());
+            System.out.println("response.statusCode() = " + response.statusCode());
+            System.out.println("response.body() = " + response.body());
+            result = response.body().split("url\": \"")[1].split("\",")[0];
+        } catch (Exception e) { // catch exception e
+            throw new RuntimeException(e);
         }
-        
-        System.err.println("Unexpected response format: " + responseBody);
-        return null;
-    } catch (Exception e) {
-        System.err.println("Error calling Image API: " + e.getMessage());
-        return null;
+        return result; // 메서드(함수)가 모두 처리되고 나서 이 값을 결과값으로 가져서 이걸 대입하거나 사용할 수 있다
     }
-}
 
     public static String useLLM(String prompt) {
     String apiUrl = System.getenv("LLM_API_URL");
