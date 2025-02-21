@@ -33,4 +33,5 @@ jobs:
           LLM_MODEL: ${{ secrets.LLM_MODEL }}
           LLM_PROMPT: ${{ vars.LLM_PROMPT }}
           SLACK_WEBHOOK_TITLE: ${{ vars.SLACK_WEBHOOK_TITLE }}
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}KEY: ${{ secrets.LLM2_API_KEY }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          KEY: ${{ secrets.LLM2_API_KEY }}
