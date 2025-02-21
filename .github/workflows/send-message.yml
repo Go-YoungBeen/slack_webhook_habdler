@@ -25,14 +25,13 @@ jobs:
         # secrets는 매번 새로 입력해야함 (과정 중 안 보임)
         # vars는 직전 값이 보임, 대신 노출됨(과정 중에 보임)
         env:
+          LLM2_API_KEY: ${{ secrets.LLM2_API_KEY }}
           LLM2_API_URL: ${{ secrets.LLM2_API_URL }}
           LLM2_MODEL: ${{ secrets.LLM2_MODEL }}
           LLM2_IMAGE_TEMPLATE: ${{ vars.LLM2_IMAGE_TEMPLATE }}
-          LLM2_API_KEY: ${{ vars.LLM2_API_KEY }}
           LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
           LLM_API_URL: ${{ secrets.LLM_API_URL }}
           LLM_MODEL: ${{ secrets.LLM_MODEL }}
           LLM_PROMPT: ${{ vars.LLM_PROMPT }}
           SLACK_WEBHOOK_TITLE: ${{ vars.SLACK_WEBHOOK_TITLE }}
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-          KEY: ${{ secrets.LLM2_API_KEY }}
