@@ -24,7 +24,53 @@ public class Webhook {
         sendSlackMessage(title, llmResult, llmImageResult);
     }
 
-   
+   public static String useLLMForImage(String prompt) {
+    String apiUrl = System.getenv("LLM2_API_URL");
+    String apiKey = System.getenv("LLM2_API_KEY");
+    String model = System.getenv("LLM2_MODEL");
+    
+    String payload = """
+            {
+              "prompt": "%s",
+              "model": "%s",
+              "width": 1024,
+              "height": 1024,
+              "steps": 20,
+              "n": 1
+            }
+            """.formatted(prompt, model);
+            
+    HttpClient client = HttpClient.newHttpClient();
+    HttpRequest request = HttpRequest.newBuilder()
+            .uri(URI.create(apiUrl))
+            .header("Content-Type", "application/json")
+            .header("Authorization", "Bearer " + apiKey)
+            .POST(HttpRequest.BodyPublishers.ofString(payload))
+            .build();
+            
+    try {
+        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+        System.out.println("Response Status: " + response.statusCode());
+        System.out.println("Full Response: " + response.body());
+        
+        if (response.statusCode() != 200) {
+            System.err.println("Image API Error: " + response.body());
+            return null; // 이미지 생성 실패시 null 반환
+        }
+
+        String responseBody = response.body();
+        // url 추출을 위한 파싱
+        if (responseBody.contains("\"url\": \"")) {
+            return responseBody.split("\"url\": \"")[1].split("\"")[0];
+        }
+        
+        System.err.println("Unexpected response format: " + responseBody);
+        return null;
+    } catch (Exception e) {
+        System.err.println("Error calling Image API: " + e.getMessage());
+        return null;
+    }
+}
 
     public static String useLLM(String prompt) {
     String apiUrl = System.getenv("LLM_API_URL");
