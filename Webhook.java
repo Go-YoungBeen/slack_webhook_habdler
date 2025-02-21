@@ -3,7 +3,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 
-public class Webhook {
+public class Solution02 {
     public static void main(String[] args) {
         String prompt = System.getenv("LLM_PROMPT");
 //        String llmResult = useLLM("자바 알고리즘 공부를 위한 자료구조 중 랜덤으로 하나를 추천하고 설명해주는 내용을 200자 이내로 작성. 별도의 앞뒤 내용 없이 해당 내용만 출력. nutshell, for slack message, in korean.");
@@ -24,65 +24,160 @@ public class Webhook {
         sendSlackMessage(title, llmResult, llmImageResult);
     }
 
-   
+    public static String useLLMForImage(String prompt) {
+        // https://api.together.xyz/
+        // https://api.together.xyz/settings/api-keys
+        // https://api.together.xyz/models
+        // https://api.together.xyz/models/black-forest-labs/FLUX.1-schnell-Free
+        // https://api.together.xyz/playground/image/black-forest-labs/FLUX.1-schnell-Free
 
-    public static String useLLM(String prompt) {
-    String apiUrl = System.getenv("LLM_API_URL");
-    String apiKey = System.getenv("LLM_API_KEY");
-    String model = System.getenv("LLM_MODEL");
-    // API URL에 generateContent 추가 및 key 파라미터 추가
-    apiUrl = apiUrl + ":generateContent?key=" + apiKey;
-    
-    // 프롬프트 앞에 명확한 지시사항 추가
-    String enhancedPrompt = prompt + "\n\n해당 내용을 이해하고 현재 시간의 분(minute)을 확인하여, 적절한 구간의 문장 중 하나만을 선택하여 출력하세요. 어떠한 설명이나 부가 내용 없이 선택된 문장만을 그대로 출력하세요.";
-    
-    String payload = String.format("""
-            {
-              "contents": [
+        String apiUrl = System.getenv("LLM2_API_URL"); // 환경변수로 관리
+        String apiKey = System.getenv("LLM2_API_KEY"); // 환경변수로 관리
+        String model = System.getenv("LLM2_MODEL"); // 환경변수로 관리
+        String payload = """
                 {
-                  "parts": [
+                  "prompt": "%s",
+                  "model": "%s",
+                  "width": 1440,
+                  "height": 1440,
+                  "steps": 4,
+                  "n": 1
+                }
+                """.formatted(prompt, model); // 대부분 JSON 파싱 문제는 , 문제!
+        HttpClient client = HttpClient.newHttpClient(); // 새롭게 요청할 클라이언트 생성
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(apiUrl)) // URL을 통해서 어디로 요청을 보내는지 결정
+                .header("Content-Type", "application/json")
+                .header("Authorization", "Bearer " + apiKey)
+                .POST(HttpRequest.BodyPublishers.ofString(payload))
+                .build(); // 핵심
+        String result = null; // return을 하려면 일단은 할당이 되긴 해야함
+        try { // try
+            HttpResponse<String> response = client.send(request,
+                    HttpResponse.BodyHandlers.ofString());
+            System.out.println("response.statusCode() = " + response.statusCode());
+            System.out.println("response.body() = " + response.body());
+            /*
+            {
+                  "id": "...",
+                    ...
+                  "data": [
                     {
-                      "text": "%s"
+                      "index": 0,
+                      "url": "https://api.together.ai/imgproxy/hzSDBVCxqVOStdqwFYa7jerhI2ky9aIIu9RN3-yhdAQ/format:jpeg/aHR0cHM6Ly90b2dldGhlci1haS1iZmwtaW1hZ2VzLXByb2QuczMudXMtd2VzdC0yLmFtYXpvbmF3cy5jb20vaW1hZ2VzLzBlY2U1MzQ4OTNiNTk2YTA0NTBkY2NkNTRkNjExNjc4OTBiMDkwZTRjZjI3NDdkOGUwZjI3NDZlM2M1MWRkYjg_WC1BbXotQWxnb3JpdGhtPUFXUzQtSE1BQy1TSEEyNTYmWC1BbXotQ29udGVudC1TaGEyNTY9VU5TSUdORUQtUEFZTE9BRCZYLUFtei1DcmVkZW50aWFsPUFTSUFZV1pXNEhWQ0JRT0I2VjVKJTJGMjAyNTAyMjElMkZ1cy13ZXN0LTIlMkZzMyUyRmF3czRfcmVxdWVzdCZYLUFtei1EYXRlPTIwMjUwMjIxVDA2MzMxNFomWC1BbXotRXhwaXJlcz0zNjAwJlgtQW16LVNlY3VyaXR5LVRva2VuPUlRb0piM0pwWjJsdVgyVmpFS2YlMkYlMkYlMkYlMkYlMkYlMkYlMkYlMkYlMkYlMkZ3RWFDWFZ6TFhkbGMzUXRNaUpITUVVQ0lFV2x1OXQlMkZSVUllZko5OXVWM0p3ZjdYb1lyNjR0c3VUcmZ1cnRFTmduc1lBaUVBeWs2QktQYVk1eWFRSUo5bEJEUENUMjVmYkRGclclMkZ0ekglMkZvR1RLZGVFaFFxbVFVSTBQJTJGJTJGJTJGJTJGJTJGJTJGJTJGJTJGJTJGJTJGQVJBQUdndzFPVGczTWpZeE5qTTNPREFpRE53cVQ4T29hVU1RSGI1THl5cnRCUCUyRkhBdkhUODN6VUFoUjRJZVR6MGRycFNibkdKJTJCYkw4WlJRaVIxRDZyNTd6ZldLcnRuelM4am9Ca0dxakk1WTMlMkZmUFRucjNnbCUyRkdUbkt0WFl0ZCUyQjUlMkJvYmxFcDBHdnZyS1pZbzgxbmZST3dMTGRHNEJkbTNFMmVKd0FSZEEyU2JDb2luSCUyQnd3RlljcDd6NzdNekdabE9sNmVYcXBCJTJCOHh3aDR4cEY1VWlGRVJEVWklMkZNTXhtTjZadUUlMkI4UHJzdk5IVGxyMXlKUnhsaHRzZlolMkJtUk1qZVZjMDdIbDZiZGxtaktyUHZJMUUlMkJnMHdITzFhZlE1SFhsRmhaRSUyQmFQcnVZSmFSZUI1QVl0YVBBY2Z4c3RlJTJGUDNjRTJFZ2FibEtGczVGMFpoUlpsJTJCZHNieE9OeDJoNXRXSGNWcWpRRjJoUUpOWmlaNTEwZDlka3lBUGJWUEczRmV2dnVlaGljQnBQYXBCaURSa3B2UHk3Z09IUUFJblNodWRQUEElMkIlMkZKWDd2ZTA5UEVZTzVWNUY4JTJGWGdhZndMbGdjbURXRFlMMyUyQmZ6cFU0TVBjYTVVNWFEJTJCeWgxTHB3MzM2dGVoQzR6SDdqOGladUxyd3BrVmt0QmFTRzFTb1l0UUtNZnRQc01DdUl3cEVLR09yWnpmJTJCYUtMMUlDR29TTmdYcTI1Y0hMckQlMkZIYm0wOXNEenR0dmtCaFQ4Y2tnVnJRamxNdTJTV0l4RWUwVU5UaGVxaFVHUkpUTUswUDJmdEhJVjVVelJ1OFFnbWIyWktBUTQ1bWlrUm9OMUIzM1dtZFVack9zb3Q2MlJkVmZSUE1wRGw1NnZFJTJCNDFZQWVYZ2tlaE9IVVJscVcxSTdtOHRZeUk0a2YlMkJMS0l1SEltVTB3QkExNjAwRUdteHFuUUYzTkZBbGUlMkZkNFM2TkZNZ0hVWFRtdUduTVdXYzRsYllXOGNHZ0RIc1U3UzBVTndjdjc1UnJHVFlUbUt5ZGlLMWdNd3ZwNHptYk9JbkVqcGZZQiUyRklKdWpyR1llcVBHMkxnUFQzdyUyQmV6Z0hXdnNTTGlYeHVZeFF5VkQlMkZOTHQ5M3lVWnlCVjNCJTJGTzlYQU5jS1AlMkZLbEExcHdnJTJCTkl6Q3B2T0M5QmpxYkFkR1ZEQ3YlMkJLdnZtYzBiblYzVFpwSjNSWHR0QUxBUmg3JTJGVG1uYjczTW1zdjRiS3A1bnJ4dTBYVkpFbWxXVENiN0c2dEJKdHVla1lXUSUyQlZqdUd6bXFrbzF3WWhZVElHSFliQklrTGFWRmREd1ptUSUyQnFyczQzTFJvJTJCJTJGZzVaTCUyQm11bEFyTENCd25lN3pKVUhPcnBzeDNSYkdVYlhaSHB3aWlCTVhEenp2YzdPaDJFSVgxWjRGNFhqTHlKRlBESVM2VUdiTHQ3bUFubHlaWTZVcyZYLUFtei1TaWduYXR1cmU9NTM5ZWRmZDhiNTMxODE5ZTQ5ZmRhYTI0ZTM4YzM5ZTVhODc1MzMwNGY3MmFmZjU0ZDQxYTdkY2FjNmE0MTM4YyZYLUFtei1TaWduZWRIZWFkZXJzPWhvc3QmeC1pZD1HZXRPYmplY3Q",
+                      "timings": ...
                     }
                   ]
-                }
-              ]
             }
-            """, enhancedPrompt);
-
-    HttpClient client = HttpClient.newHttpClient();
-    HttpRequest request = HttpRequest.newBuilder()
-            .uri(URI.create(apiUrl))
-            .header("Content-Type", "application/json")
-            .POST(HttpRequest.BodyPublishers.ofString(payload))
-            .build();
-
-    try {
-        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
-        System.out.println("response.statusCode() = " + response.statusCode());
-        System.out.println("response.body() = " + response.body());
-        
-        if (response.statusCode() != 200) {
-            throw new RuntimeException("API call failed: " + response.body());
+             */
+            result = response.body()
+                    .split("url\": \"")[1]
+                    .split("\",")[0];
+        } catch (Exception e) { // catch exception e
+            throw new RuntimeException(e);
         }
-
-        // Gemini API 응답 파싱
-        String responseBody = response.body();
-        if (responseBody.contains("\"text\":")) {
-            String text = responseBody.split("\"text\": \"")[1].split("\"")[0];
-            // 출력된 텍스트에서 대괄호 안의 내용만 추출
-            if (text.contains("[") && text.contains("]")) {
-                return text.substring(text.indexOf("[") + 1, text.lastIndexOf("]"));
-            }
-            return text;
-        }
-        throw new RuntimeException("Failed to parse response: " + responseBody);
-    } catch (Exception e) {
-        throw new RuntimeException("Error calling LLM API", e);
+        return result; // 앞뒤를 자르고 우리에게 필요한 내용만 리턴
     }
-}
 
-    //    public static void sendSlackMessage(String text) {
+   public static String useLLM(String prompt) {
+        String apiUrl = System.getenv("LLM_API_URL");
+        String apiKey = System.getenv("LLM_API_KEY");
+        String model = System.getenv("LLM_MODEL");
+        
+        // Properly escape the prompt for JSON
+        String escapedPrompt = prompt
+            .replace("\\", "\\\\")
+            .replace("\"", "\\\"")
+            .replace("\n", "\\n")
+            .replace("\r", "\\r")
+            .replace("\t", "\\t")
+            .replace("*", "");  // Remove asterisks from bullet points
+        
+        String payload = """
+                {
+                  "messages": [
+                    {
+                      "role": "user",
+                      "content": "%s"
+                    }
+                  ],
+                  "model": "%s"
+                }
+                """.formatted(escapedPrompt, model);
+
+        HttpClient client = HttpClient.newHttpClient();
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(apiUrl))
+                .header("Content-Type", "application/json")
+                .header("Authorization", "Bearer " + apiKey)
+                .POST(HttpRequest.BodyPublishers.ofString(payload))
+                .build();
+
+        try {
+            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+            System.out.println("response.statusCode() = " + response.statusCode());
+            System.out.println("response.body() = " + response.body());
+            
+            if (response.statusCode() != 200) {
+                throw new RuntimeException("API call failed with status " + response.statusCode() + ": " + response.body());
+            }
+
+            // 응답 파싱 개선
+            String responseBody = response.body();
+            if (responseBody.contains("\"content\":\"")) {
+                int startIndex = responseBody.indexOf("\"content\":\"") + "\"content\":\"".length();
+                int endIndex = responseBody.indexOf("\",\"", startIndex);
+                if (endIndex > startIndex) {
+                    return responseBody.substring(startIndex, endIndex)
+                        .replace("\\n", "\n")
+                        .replace("\\\"", "\"");
+                }
+            }
+            throw new RuntimeException("Unexpected response format: " + responseBody);
+        } catch (Exception e) {
+            throw new RuntimeException("Error in LLM API call: " + e.getMessage(), e);
+        }
+    }
+
+    public static void sendSlackMessage(String title, String text, String imageUrl) {
+        String slackUrl = System.getenv("SLACK_WEBHOOK_URL");
+        
+        // Escape special characters for JSON
+        text = text
+            .replace("\\", "\\\\")
+            .replace("\"", "\\\"")
+            .replace("\n", "\\n")
+            .replace("\r", "\\r")
+            .replace("\t", "\\t");
+        
+        String payload = """
+                {
+                    "attachments": [{
+                        "title": "%s",
+                        "text": "%s",
+                        "image_url": "%s"
+                    }]
+                }
+                """.formatted(title, text, imageUrl);
+
+        HttpClient client = HttpClient.newHttpClient();
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(slackUrl))
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(payload))
+                .build();
+
+        try {
+            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() != 200) {
+                throw new RuntimeException("Slack webhook failed with status " + response.statusCode() + ": " + response.body());
+            }
+        } catch (Exception e) {
+            throw new RuntimeException("Error sending Slack message: " + e.getMessage(), e);
+        }
+    }
+
+//    public static void sendSlackMessage(String text) {
     public static void sendSlackMessage(String title, String text, String imageUrl) {
         // 다시 시작된 슬랙 침공
 //        String slackUrl = "https://hooks.slack.com/services/";
@@ -97,7 +192,7 @@ public class Webhook {
                         "image_url": "%s"
                     }]}
                 """.formatted(title, text, imageUrl);
-
+        // 마치 브라우저나 유저인 척하는 것.
         HttpClient client = HttpClient.newHttpClient(); // 새롭게 요청할 클라이언트 생성
         // 요청을 만들어보자! (fetch)
         HttpRequest request = HttpRequest.newBuilder()
@@ -111,7 +206,7 @@ public class Webhook {
         try { // try
             HttpResponse<String> response = client.send(request,
                     HttpResponse.BodyHandlers.ofString());
-      
+            // 2는 뭔가 됨. 4,5 뭔가 잘못 됨. 1,3? 이런 건 없어요. 1은 볼 일이 없고요. 3은... 어...
             System.out.println("response.statusCode() = " + response.statusCode());
             System.out.println("response.body() = " + response.body());
         } catch (Exception e) { // catch exception e
