@@ -83,8 +83,8 @@ public class Webhook {
     String apiUrl = System.getenv("LLM_API_URL");
     String apiKey = System.getenv("LLM_API_KEY");
     
-    // API URL에 key 파라미터 추가
-    apiUrl = apiUrl + "?key=" + apiKey;
+    // API URL에 generateContent 추가 및 key 파라미터 추가
+    apiUrl = apiUrl + ":generateContent?key=" + apiKey;
     
     // Gemini API의 요청 형식에 맞게 수정
     String payload = String.format("""
@@ -105,7 +105,6 @@ public class Webhook {
     HttpRequest request = HttpRequest.newBuilder()
             .uri(URI.create(apiUrl))
             .header("Content-Type", "application/json")
-            // Gemini API는 Authorization 헤더가 필요하지 않음
             .POST(HttpRequest.BodyPublishers.ofString(payload))
             .build();
 
