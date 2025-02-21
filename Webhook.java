@@ -47,30 +47,30 @@ public class Webhook {
                 .POST(HttpRequest.BodyPublishers.ofString(payload))
                 .build(); // 핵심
         String result = null; // return을 하려면 일단은 할당이 되긴 해야함
-        try { // try
-            HttpResponse<String> response = client.send(request,
-                    HttpResponse.BodyHandlers.ofString());
-            System.out.println("response.statusCode() = " + response.statusCode());
-            System.out.println("response.body() = " + response.body());
-            /*
-            {
-                  "id": "...",
-                    ...
-                  "data": [
-                    {
-                      "index": 0,
-                      "url": "https://api.together.ai/imgproxy/hzSDBVCxqVOStdqwFYa7jerhI2ky9aIIu9RN3-yhdAQ/format:jpeg/aHR0cHM6Ly90b2dldGhlci1haS1iZmwtaW1hZ2VzLXByb2QuczMudXMtd2VzdC0yLmFtYXpvbmF3cy5jb20vaW1hZ2VzLzBlY2U1MzQ4OTNiNTk2YTA0NTBkY2NkNTRkNjExNjc4OTBiMDkwZTRjZjI3NDdkOGUwZjI3NDZlM2M1MWRkYjg_WC1BbXotQWxnb3JpdGhtPUFXUzQtSE1BQy1TSEEyNTYmWC1BbXotQ29udGVudC1TaGEyNTY9VU5TSUdORUQtUEFZTE9BRCZYLUFtei1DcmVkZW50aWFsPUFTSUFZV1pXNEhWQ0JRT0I2VjVKJTJGMjAyNTAyMjElMkZ1cy13ZXN0LTIlMkZzMyUyRmF3czRfcmVxdWVzdCZYLUFtei1EYXRlPTIwMjUwMjIxVDA2MzMxNFomWC1BbXotRXhwaXJlcz0zNjAwJlgtQW16LVNlY3VyaXR5LVRva2VuPUlRb0piM0pwWjJsdVgyVmpFS2YlMkYlMkYlMkYlMkYlMkYlMkYlMkYlMkYlMkYlMkZ3RWFDWFZ6TFhkbGMzUXRNaUpITUVVQ0lFV2x1OXQlMkZSVUllZko5OXVWM0p3ZjdYb1lyNjR0c3VUcmZ1cnRFTmduc1lBaUVBeWs2QktQYVk1eWFRSUo5bEJEUENUMjVmYkRGclclMkZ0ekglMkZvR1RLZGVFaFFxbVFVSTBQJTJGJTJGJTJGJTJGJTJGJTJGJTJGJTJGJTJGJTJGQVJBQUdndzFPVGczTWpZeE5qTTNPREFpRE53cVQ4T29hVU1RSGI1THl5cnRCUCUyRkhBdkhUODN6VUFoUjRJZVR6MGRycFNibkdKJTJCYkw4WlJRaVIxRDZyNTd6ZldLcnRuelM4am9Ca0dxakk1WTMlMkZmUFRucjNnbCUyRkdUbkt0WFl0ZCUyQjUlMkJvYmxFcDBHdnZyS1pZbzgxbmZST3dMTGRHNEJkbTNFMmVKd0FSZEEyU2JDb2luSCUyQnd3RlljcDd6NzdNekdabE9sNmVYcXBCJTJCOHh3aDR4cEY1VWlGRVJEVWklMkZNTXhtTjZadUUlMkI4UHJzdk5IVGxyMXlKUnhsaHRzZlolMkJtUk1qZVZjMDdIbDZiZGxtaktyUHZJMUUlMkJnMHdITzFhZlE1SFhsRmhaRSUyQmFQcnVZSmFSZUI1QVl0YVBBY2Z4c3RlJTJGUDNjRTJFZ2FibEtGczVGMFpoUlpsJTJCZHNieE9OeDJoNXRXSGNWcWpRRjJoUUpOWmlaNTEwZDlka3lBUGJWUEczRmV2dnVlaGljQnBQYXBCaURSa3B2UHk3Z09IUUFJblNodWRQUEElMkIlMkZKWDd2ZTA5UEVZTzVWNUY4JTJGWGdhZndMbGdjbURXRFlMMyUyQmZ6cFU0TVBjYTVVNWFEJTJCeWgxTHB3MzM2dGVoQzR6SDdqOGladUxyd3BrVmt0QmFTRzFTb1l0UUtNZnRQc01DdUl3cEVLR09yWnpmJTJCYUtMMUlDR29TTmdYcTI1Y0hMckQlMkZIYm0wOXNEenR0dmtCaFQ4Y2tnVnJRamxNdTJTV0l4RWUwVU5UaGVxaFVHUkpUTUswUDJmdEhJVjVVelJ1OFFnbWIyWktBUTQ1bWlrUm9OMUIzM1dtZFVack9zb3Q2MlJkVmZSUE1wRGw1NnZFJTJCNDFZQWVYZ2tlaE9IVVJscVcxSTdtOHRZeUk0a2YlMkJMS0l1SEltVTB3QkExNjAwRUdteHFuUUYzTkZBbGUlMkZkNFM2TkZNZ0hVWFRtdUduTVdXYzRsYllXOGNHZ0RIc1U3UzBVTndjdjc1UnJHVFlUbUt5ZGlLMWdNd3ZwNHptYk9JbkVqcGZZQiUyRklKdWpyR1llcVBHMkxnUFQzdyUyQmV6Z0hXdnNTTGlYeHVZeFF5VkQlMkZOTHQ5M3lVWnlCVjNCJTJGTzlYQU5jS1AlMkZLbEExcHdnJTJCTkl6Q3B2T0M5QmpxYkFkR1ZEQ3YlMkJLdnZtYzBiblYzVFpwSjNSWHR0QUxBUmg3JTJGVG1uYjczTW1zdjRiS3A1bnJ4dTBYVkpFbWxXVENiN0c2dEJKdHVla1lXUSUyQlZqdUd6bXFrbzF3WWhZVElHSFliQklrTGFWRmREd1ptUSUyQnFyczQzTFJvJTJCJTJGZzVaTCUyQm11bEFyTENCd25lN3pKVUhPcnBzeDNSYkdVYlhaSHB3aWlCTVhEenp2YzdPaDJFSVgxWjRGNFhqTHlKRlBESVM2VUdiTHQ3bUFubHlaWTZVcyZYLUFtei1TaWduYXR1cmU9NTM5ZWRmZDhiNTMxODE5ZTQ5ZmRhYTI0ZTM4YzM5ZTVhODc1MzMwNGY3MmFmZjU0ZDQxYTdkY2FjNmE0MTM4YyZYLUFtei1TaWduZWRIZWFkZXJzPWhvc3QmeC1pZD1HZXRPYmplY3Q",
-                      "timings": ...
-                    }
-                  ]
-            }
-             */
-            result = response.body()
-                    .split("url\": \"")[1]
-                    .split("\",")[0];
-        } catch (Exception e) { // catch exception e
-            throw new RuntimeException(e);
+         try {
+        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+        System.out.println("Response Status: " + response.statusCode());
+        System.out.println("Full Response: " + response.body());
+        
+        if (response.statusCode() != 200) {
+            throw new RuntimeException("API call failed with status " + response.statusCode() + ": " + response.body());
         }
+
+        String responseBody = response.body();
+        // 다양한 응답 형식 처리
+        if (responseBody.contains("\"content\":\"")) {
+            return responseBody.split("\"content\":\"")[1].split("\"")[0];
+        } else if (responseBody.contains("\"message\":\"")) {
+            return responseBody.split("\"message\":\"")[1].split("\"")[0];
+        } else if (responseBody.contains("\"text\":\"")) {
+            return responseBody.split("\"text\":\"")[1].split("\"")[0];
+        }
+        
+        throw new RuntimeException("Unexpected response format: " + responseBody);
+    } catch (Exception e) {
+        System.err.println("Error details: " + e.getMessage());
+        throw new RuntimeException("Error calling LLM API: " + e.getMessage(), e);
+    }
         return result; // 앞뒤를 자르고 우리에게 필요한 내용만 리턴
     }
 
