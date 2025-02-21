@@ -112,44 +112,6 @@ public class Webhook {
 
     public static void sendSlackMessage(String title, String text, String imageUrl) {
         String slackUrl = System.getenv("SLACK_WEBHOOK_URL");
-        
-        // Escape special characters for JSON
-        text = text
-            .replace("\\", "\\\\")
-            .replace("\"", "\\\"")
-            .replace("\n", "\\n")
-            .replace("\r", "\\r")
-            .replace("\t", "\\t");
-        
-        String payload = """
-                {
-                    "attachments": [{
-                        "title": "%s",
-                        "text": "%s",
-                        "image_url": "%s"
-                    }]
-                }
-                """.formatted(title, text, imageUrl);
-
-        HttpClient client = HttpClient.newHttpClient();
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(slackUrl))
-                .header("Content-Type", "application/json")
-                .POST(HttpRequest.BodyPublishers.ofString(payload))
-                .build();
-
-        try {
-            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
-            if (response.statusCode() != 200) {
-                throw new RuntimeException("Slack webhook failed with status " + response.statusCode() + ": " + response.body());
-            }
-        } catch (Exception e) {
-            throw new RuntimeException("Error sending Slack message: " + e.getMessage(), e);
-        }
-    }
-
-    public static void sendSlackMessage(String title, String text, String imageUrl) {
-        String slackUrl = System.getenv("SLACK_WEBHOOK_URL");
         String payload = """
                     {"attachments": [{
                         "title": "%s",
