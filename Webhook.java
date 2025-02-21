@@ -51,64 +51,54 @@ public class Webhook {
     }
 
     public static String useLLM(String prompt) {
-        String apiUrl = System.getenv("LLM_API_URL");
-        String apiKey = System.getenv("LLM_API_KEY");
-        String model = System.getenv("LLM_MODEL");
-        
-        // Properly escape the prompt for JSON
-        String escapedPrompt = prompt
-            .replace("\\", "\\\\")
-            .replace("\"", "\\\"")
-            .replace("\n", "\\n")
-            .replace("\r", "\\r")
-            .replace("\t", "\\t")
-            .replace("*", "");  // Remove asterisks from bullet points
-        
-        String payload = """
+    String apiUrl = System.getenv("LLM_API_URL");
+    String apiKey = System.getenv("LLM_API_KEY");
+    String model = System.getenv("LLM_MODEL");
+    
+    String payload = """
+            {
+              "messages": [
                 {
-                  "messages": [
-                    {
-                      "role": "user",
-                      "content": "%s"
-                    }
-                  ],
-                  "model": "%s"
+                  "role": "user",
+                  "content": "%s"
                 }
-                """.formatted(escapedPrompt, model);
-
-        HttpClient client = HttpClient.newHttpClient();
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(apiUrl))
-                .header("Content-Type", "application/json")
-                .header("Authorization", "Bearer " + apiKey)
-                .POST(HttpRequest.BodyPublishers.ofString(payload))
-                .build();
-
-        try {
-            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
-            System.out.println("response.statusCode() = " + response.statusCode());
-            System.out.println("response.body() = " + response.body());
-            
-            if (response.statusCode() != 200) {
-                throw new RuntimeException("API call failed with status " + response.statusCode() + ": " + response.body());
+              ],
+              "model": "%s"
             }
+            """.formatted(prompt, model);
 
-            // 응답 파싱 개선
-            String responseBody = response.body();
-            if (responseBody.contains("\"content\":\"")) {
-                int startIndex = responseBody.indexOf("\"content\":\"") + "\"content\":\"".length();
-                int endIndex = responseBody.indexOf("\",\"", startIndex);
-                if (endIndex > startIndex) {
-                    return responseBody.substring(startIndex, endIndex)
-                        .replace("\\n", "\n")
-                        .replace("\\\"", "\"");
-                }
-            }
-            throw new RuntimeException("Unexpected response format: " + responseBody);
-        } catch (Exception e) {
-            throw new RuntimeException("Error in LLM API call: " + e.getMessage(), e);
+    HttpClient client = HttpClient.newHttpClient();
+    HttpRequest request = HttpRequest.newBuilder()
+            .uri(URI.create(apiUrl))
+            .header("Content-Type", "application/json")
+            .header("Authorization", "Bearer " + apiKey)
+            .POST(HttpRequest.BodyPublishers.ofString(payload))
+            .build();
+
+    try {
+        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+        System.out.println("response.statusCode() = " + response.statusCode());
+        System.out.println("response.body() = " + response.body());
+        
+        if (response.statusCode() != 200) {
+            throw new RuntimeException("API call failed: " + response.body());
         }
+
+        String responseBody = response.body();
+        // "content":" 다음에 오는 텍스트를 찾고
+        int startIndex = responseBody.indexOf("\"content\":\"") + "\"content\":\"".length();
+        // 그 다음에 오는 첫 번째 "\""까지의 내용만 추출
+        int endIndex = responseBody.indexOf("\"", startIndex);
+        
+        if (startIndex >= 0 && endIndex > startIndex) {
+            return responseBody.substring(startIndex, endIndex);
+        }
+        
+        throw new RuntimeException("Failed to parse response");
+    } catch (Exception e) {
+        throw new RuntimeException("Error calling LLM API", e);
     }
+}
 
     public static void sendSlackMessage(String title, String text, String imageUrl) {
         String slackUrl = System.getenv("SLACK_WEBHOOK_URL");
