@@ -75,57 +75,55 @@ public class Webhook {
     }
 
     public static String useLLM(String prompt) {
-        String apiUrl = System.getenv("LLM_API_URL");
-        String apiKey = System.getenv("LLM_API_KEY");
-        String model = System.getenv("LLM_MODEL");
-        
-        // Escape special characters and line breaks
-        prompt = prompt.replace("\n", "\\n").replace("\r", "\\r").replace("\"", "\\\"");
-        
-        String payload = String.format("""
+    String apiUrl = System.getenv("LLM_API_URL");
+    String apiKey = System.getenv("LLM_API_KEY");
+    
+    // API URL에 key 파라미터 추가
+    apiUrl = apiUrl + "?key=" + apiKey;
+    
+    // Gemini API의 요청 형식에 맞게 수정
+    String payload = String.format("""
+            {
+              "contents": [
                 {
-                  "messages": [
+                  "parts": [
                     {
-                      "role": "user",
-                      "content": "%s"
+                      "text": "%s"
                     }
-                  ],
-                  "model": "%s"
+                  ]
                 }
-                """, prompt, model);
-
-        HttpClient client = HttpClient.newHttpClient();
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(apiUrl))
-                .header("Content-Type", "application/json")
-                .header("Authorization", "Bearer " + apiKey)
-                .POST(HttpRequest.BodyPublishers.ofString(payload))
-                .build();
-
-        try {
-            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
-            System.out.println("response.statusCode() = " + response.statusCode());
-            System.out.println("response.body() = " + response.body());
-            
-            if (response.statusCode() != 200) {
-                throw new RuntimeException("API call failed: " + response.body());
+              ]
             }
+            """, prompt);
 
-            // JSON 응답을 더 안전하게 파싱
-            if (response.body().contains("\"content\":\"")) {
-                String[] parts = response.body().split("\"content\":\"");
-                if (parts.length > 1) {
-                    String[] contentParts = parts[1].split("\"},\"logprobs\"");
-                    if (contentParts.length > 0) {
-                        return contentParts[0];
-                    }
-                }
-            }
-            throw new RuntimeException("Failed to parse response: " + response.body());
-        } catch (Exception e) {
-            throw new RuntimeException("Error calling LLM API", e);
+    HttpClient client = HttpClient.newHttpClient();
+    HttpRequest request = HttpRequest.newBuilder()
+            .uri(URI.create(apiUrl))
+            .header("Content-Type", "application/json")
+            // Gemini API는 Authorization 헤더가 필요하지 않음
+            .POST(HttpRequest.BodyPublishers.ofString(payload))
+            .build();
+
+    try {
+        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+        System.out.println("response.statusCode() = " + response.statusCode());
+        System.out.println("response.body() = " + response.body());
+        
+        if (response.statusCode() != 200) {
+            throw new RuntimeException("API call failed: " + response.body());
         }
+
+        // Gemini API 응답 형식에 맞게 파싱
+        if (response.body().contains("\"text\":")) {
+            return response.body()
+                    .split("\"text\": \"")[1]
+                    .split("\"")[0];
+        }
+        throw new RuntimeException("Failed to parse response: " + response.body());
+    } catch (Exception e) {
+        throw new RuntimeException("Error calling LLM API", e);
     }
+}
 
     //    public static void sendSlackMessage(String text) {
     public static void sendSlackMessage(String title, String text, String imageUrl) {
