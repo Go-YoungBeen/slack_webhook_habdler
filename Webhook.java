@@ -75,13 +75,14 @@ public class Webhook {
     }
 
     public static String useLLM(String prompt) {
-
-  
-        String apiUrl = System.getenv("LLM_API_URL"); // 환경변수로 관리
-        String apiKey = System.getenv("LLM_API_KEY"); // 환경변수로 관리
-        String model = System.getenv("LLM_MODEL"); // 환경변수로 관리
-//        String payload = "{\"text\": \"" + prompt + "\"}";
-        String payload = """
+        String apiUrl = System.getenv("LLM_API_URL");
+        String apiKey = System.getenv("LLM_API_KEY");
+        String model = System.getenv("LLM_MODEL");
+        
+        // Escape special characters and line breaks
+        prompt = prompt.replace("\n", "\\n").replace("\r", "\\r").replace("\"", "\\\"");
+        
+        String payload = String.format("""
                 {
                   "messages": [
                     {
@@ -91,41 +92,39 @@ public class Webhook {
                   ],
                   "model": "%s"
                 }
-                """.formatted(prompt, model);
-        HttpClient client = HttpClient.newHttpClient(); // 새롭게 요청할 클라이언트 생성
+                """, prompt, model);
+
+        HttpClient client = HttpClient.newHttpClient();
         HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(apiUrl)) // URL을 통해서 어디로 요청을 보내는지 결정
+                .uri(URI.create(apiUrl))
                 .header("Content-Type", "application/json")
                 .header("Authorization", "Bearer " + apiKey)
                 .POST(HttpRequest.BodyPublishers.ofString(payload))
-                .build(); // 핵심
-        String result = null; // return을 하려면 일단은 할당이 되긴 해야함
-        // 그래서 null으로라도 초기화를 해놓습니다.
-        try { // try
-            HttpResponse<String> response = client.send(request,
-                    HttpResponse.BodyHandlers.ofString());
+                .build();
+
+        try {
+            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
             System.out.println("response.statusCode() = " + response.statusCode());
             System.out.println("response.body() = " + response.body());
-            /*
-            {
-                "id":...,
-                ...
-                "choices":[{"index":0,"message":
-                {"role":"assistant","content":"<결과물>"},
-                "logprobs":null,"finish_reason":"stop"}],
-                "usage":{...}
-             }
-             */
-            result = response.body()
-                    .split("\"content\":\"")[1]
-                    .split("\"},\"logprobs\"")[0]; // 글씨 패턴 -> 스페이스나 escape 처리... 오타... 있음.
-            // 그걸 너무 무서워하지말고...
-            // https://regexr.com/
-        } catch (Exception e) { // catch exception e
-            throw new RuntimeException(e);
+            
+            if (response.statusCode() != 200) {
+                throw new RuntimeException("API call failed: " + response.body());
+            }
+
+            // JSON 응답을 더 안전하게 파싱
+            if (response.body().contains("\"content\":\"")) {
+                String[] parts = response.body().split("\"content\":\"");
+                if (parts.length > 1) {
+                    String[] contentParts = parts[1].split("\"},\"logprobs\"");
+                    if (contentParts.length > 0) {
+                        return contentParts[0];
+                    }
+                }
+            }
+            throw new RuntimeException("Failed to parse response: " + response.body());
+        } catch (Exception e) {
+            throw new RuntimeException("Error calling LLM API", e);
         }
-//        return null; // 메서드(함수)가 모두 처리되고 나서 이 값을 결과값으로 가져서 이걸 대입하거나 사용할 수 있다
-        return result; // 앞뒤를 자르고 우리에게 필요한 내용만 리턴
     }
 
     //    public static void sendSlackMessage(String text) {
